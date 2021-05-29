@@ -22,6 +22,28 @@ def clean_free(ascent_type: str) -> bool:
     return ascent_type not in NOT_ON
 
 
+def is_ysd(ascent_grade: str) -> bool:
+    """ Indicates whether a grade formatted in Yosemite Decimal System. """
+    if ascent_grade.startswith('5.'):
+        return True
+    else:
+        return False
+
+def ysd2ewbanks(grade: str) -> int:
+    """ Convert a grade from Yosemite Decimal System to Ewbanks. """
+
+    if grade == '5.5': return 12
+    elif grade == '5.6': return 13
+    elif grade == '5.7': return 14
+    elif grade == '5.8': return 15
+    elif grade == '5.9': return 17
+    elif grade == '5.10a': return 18
+    elif grade == '5.10b': return 19
+    elif grade == '5.10c': return 20
+    else:
+        raise ValueError("Haven't accouned for YSD grade {}".format(grade))
+
+
 def is_ewbanks(ascent_grade: str) -> bool:
     """ If a grade can be converted to an integer, then it must be in the
     Ewbanks system, or at least not French or YDS."""
@@ -31,6 +53,9 @@ def is_ewbanks(ascent_grade: str) -> bool:
         return False
     else:
         return True
+
+def is_ewbanks_or_ysd(ascent_grade) -> bool:
+    return is_ewbanks(ascent_grade) or is_ysd(ascent_grade)
 
 
 def prepare_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -53,11 +78,12 @@ def prepare_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop_duplicates(['Route ID'])
     # TODO Remove repeats by taking the best ascent.
 
-    # Remove non-Ewbanks graded stuff.
-    df = df[df['Ascent Grade'].apply(is_ewbanks)]
+    # Remove non-Ewbanks/YSD graded stuff.
+    df = df[df['Ascent Grade'].apply(is_ewbanks_or_ysd)]
     print("Number of unique clean ascents: {}".format(len(df)))
     # TODO Convert remaining grades to Ewbanks
-    df['Ewbanks Grade'] = df['Ascent Grade'].apply(lambda x: int(x))
+    df['Ewbanks Grade'] = df['Ascent Grade'].apply(lambda x: ysd2ewbanks(x) if is_ysd(x) else x)
+    df['Ewbanks Grade'] = df['Ewbanks Grade'].apply(lambda x: int(x))
 
     # TODO Break stats down by pitches for more fine-grained info. Currently
     # just using whole routes but I would prefer it if the output was per-pitch
